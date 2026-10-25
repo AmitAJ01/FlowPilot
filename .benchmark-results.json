@@ -1,0 +1,253 @@
+{
+  "evaluatedAt": "2026-10-25T13:51:55.785Z",
+  "benchmarkType": "controlled_synthetic_regression",
+  "disclaimer": "Controlled Synthetic Benchmark: Injected fault simulation across 5 deterministic fixture scenarios. Evaluates bounded recovery mechanisms under controlled conditions; not an uncontrolled open-web benchmark.",
+  "totalCases": 5,
+  "baselineSuccessRate": 40,
+  "baselineSuccessFraction": "2/5",
+  "recoverySuccessRate": 80,
+  "recoverySuccessFraction": "4/5",
+  "recoveryRateOnRecoverable": 100,
+  "recoveryRateOnRecoverableFraction": "2/2",
+  "failureDetectionRate": 100,
+  "failureDetectionFraction": "4/4",
+  "invalidDataDetectionRate": 100,
+  "invalidDataDetectionFraction": "1/1",
+  "meanPrecisionRecovery": 1,
+  "meanRecallRecovery": 1,
+  "meanF1Recovery": 1,
+  "averageDurationBaselineMs": 2212,
+  "averageDurationRecoveryMs": 2576,
+  "p95DurationMs": 8352,
+  "totalRetriesInRecovery": 2,
+  "caseResults": [
+    {
+      "caseDef": {
+        "id": "TC-NORMAL",
+        "name": "Normal Workflow Execution",
+        "scenario": "none",
+        "failureCategory": "none",
+        "description": "Standard DOM extraction without synthetic delay or faults.",
+        "expectedOutcome": "Immediate success in both baseline and recovery modes.",
+        "isRecoverable": false,
+        "expectedMatchingCount": 4,
+        "expectedIds": [
+          "CS301-A3",
+          "CS410-PS4",
+          "SE250-D2",
+          "MATH220-Q4"
+        ]
+      },
+      "baseline": {
+        "status": "completed",
+        "durationMs": 628,
+        "matchedCount": 4,
+        "retriesCount": 0,
+        "taskSuccess": true,
+        "outputCorrect": true,
+        "precision": 1,
+        "recall": 1,
+        "f1Score": 1,
+        "plannerSource": "deterministic_fallback",
+        "isValid": true
+      },
+      "recovery": {
+        "status": "completed",
+        "durationMs": 546,
+        "matchedCount": 4,
+        "retriesCount": 0,
+        "recoverySucceeded": false,
+        "taskSuccess": true,
+        "outputCorrect": true,
+        "precision": 1,
+        "recall": 1,
+        "f1Score": 1,
+        "plannerSource": "deterministic_fallback",
+        "malformedCount": 0,
+        "isValid": true
+      }
+    },
+    {
+      "caseDef": {
+        "id": "TC-DELAYED",
+        "name": "Delayed Element Hydration",
+        "scenario": "delayed_element",
+        "failureCategory": "transient_latency",
+        "description": "Assignment nodes mount after a 1,500ms delay.",
+        "expectedOutcome": "Fails under baseline (800ms initial wait); succeeds under recovery via re-inspection and retry.",
+        "isRecoverable": true,
+        "expectedMatchingCount": 4,
+        "expectedIds": [
+          "CS301-A3",
+          "CS410-PS4",
+          "SE250-D2",
+          "MATH220-Q4"
+        ]
+      },
+      "baseline": {
+        "status": "failed",
+        "durationMs": 1101,
+        "matchedCount": 0,
+        "retriesCount": 0,
+        "taskSuccess": false,
+        "outputCorrect": true,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "plannerSource": "deterministic_fallback",
+        "error": "Recovery budget exhausted for action \"Inspect DOM & Locate Assignment Nodes\" after 0 retries.",
+        "isValid": true
+      },
+      "recovery": {
+        "status": "completed",
+        "durationMs": 2477,
+        "matchedCount": 4,
+        "retriesCount": 1,
+        "recoverySucceeded": true,
+        "taskSuccess": true,
+        "outputCorrect": true,
+        "precision": 1,
+        "recall": 1,
+        "f1Score": 1,
+        "plannerSource": "deterministic_fallback",
+        "malformedCount": 0,
+        "isValid": true
+      }
+    },
+    {
+      "caseDef": {
+        "id": "TC-TRANSIENT",
+        "name": "Transient Node Detachment",
+        "scenario": "transient_failure",
+        "failureCategory": "transient_detachment",
+        "description": "DOM read encounters transient hydration detachment on first attempt.",
+        "expectedOutcome": "Fails under baseline; recovers on retry #1 in recovery mode.",
+        "isRecoverable": true,
+        "expectedMatchingCount": 4,
+        "expectedIds": [
+          "CS301-A3",
+          "CS410-PS4",
+          "SE250-D2",
+          "MATH220-Q4"
+        ]
+      },
+      "baseline": {
+        "status": "failed",
+        "durationMs": 364,
+        "matchedCount": 0,
+        "retriesCount": 0,
+        "taskSuccess": false,
+        "outputCorrect": true,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "plannerSource": "deterministic_fallback",
+        "error": "Recovery budget exhausted for action \"Inspect DOM & Locate Assignment Nodes\" after 0 retries.",
+        "isValid": true
+      },
+      "recovery": {
+        "status": "completed",
+        "durationMs": 942,
+        "matchedCount": 4,
+        "retriesCount": 1,
+        "recoverySucceeded": true,
+        "taskSuccess": true,
+        "outputCorrect": true,
+        "precision": 1,
+        "recall": 1,
+        "f1Score": 1,
+        "plannerSource": "deterministic_fallback",
+        "malformedCount": 0,
+        "isValid": true
+      }
+    },
+    {
+      "caseDef": {
+        "id": "TC-MISSING",
+        "name": "Permanently Missing Element",
+        "scenario": "missing_element",
+        "failureCategory": "permanent_dom_missing",
+        "description": "Required assignment cards are omitted from the page.",
+        "expectedOutcome": "Gracefully detected and halted as a permanent failure in both modes.",
+        "isRecoverable": false,
+        "expectedMatchingCount": 0,
+        "expectedIds": []
+      },
+      "baseline": {
+        "status": "failed",
+        "durationMs": 8352,
+        "matchedCount": 0,
+        "retriesCount": 0,
+        "taskSuccess": false,
+        "outputCorrect": true,
+        "precision": 1,
+        "recall": 1,
+        "f1Score": 1,
+        "plannerSource": "deterministic_fallback",
+        "error": "Recovery budget exhausted for action \"Inspect DOM & Locate Assignment Nodes\" after 0 retries.",
+        "isValid": true
+      },
+      "recovery": {
+        "status": "failed",
+        "durationMs": 8305,
+        "matchedCount": 0,
+        "retriesCount": 0,
+        "recoverySucceeded": false,
+        "taskSuccess": false,
+        "outputCorrect": true,
+        "precision": 1,
+        "recall": 1,
+        "f1Score": 1,
+        "plannerSource": "deterministic_fallback",
+        "malformedCount": 0,
+        "error": "DOM re-inspection confirmed element absence via [data-testid=\"empty-portal-notice\"]. Ceasing retries.",
+        "isValid": true
+      }
+    },
+    {
+      "caseDef": {
+        "id": "TC-MALFORMED",
+        "name": "Malformed Record Validation",
+        "scenario": "malformed_data",
+        "failureCategory": "schema_corruption",
+        "description": "One assignment card contains an unparseable calendar date.",
+        "expectedOutcome": "Extracts valid records while explicitly warning and excluding the malformed entry.",
+        "isRecoverable": false,
+        "expectedMatchingCount": 3,
+        "expectedIds": [
+          "CS301-A3",
+          "SE250-D2",
+          "MATH220-Q4"
+        ]
+      },
+      "baseline": {
+        "status": "completed",
+        "durationMs": 616,
+        "matchedCount": 3,
+        "retriesCount": 0,
+        "taskSuccess": true,
+        "outputCorrect": true,
+        "precision": 1,
+        "recall": 1,
+        "f1Score": 1,
+        "plannerSource": "deterministic_fallback",
+        "isValid": true
+      },
+      "recovery": {
+        "status": "completed",
+        "durationMs": 611,
+        "matchedCount": 3,
+        "retriesCount": 0,
+        "recoverySucceeded": false,
+        "taskSuccess": true,
+        "outputCorrect": true,
+        "precision": 1,
+        "recall": 1,
+        "f1Score": 1,
+        "plannerSource": "deterministic_fallback",
+        "malformedCount": 2,
+        "isValid": true
+      }
+    }
+  ]
+}
