@@ -1,5 +1,5 @@
 {
-  "evaluatedAt": "2026-10-25T13:51:55.785Z",
+  "evaluatedAt": "2026-10-25T14:41:39.838Z",
   "benchmarkType": "controlled_synthetic_regression",
   "disclaimer": "Controlled Synthetic Benchmark: Injected fault simulation across 5 deterministic fixture scenarios. Evaluates bounded recovery mechanisms under controlled conditions; not an uncontrolled open-web benchmark.",
   "totalCases": 5,
@@ -16,9 +16,9 @@
   "meanPrecisionRecovery": 1,
   "meanRecallRecovery": 1,
   "meanF1Recovery": 1,
-  "averageDurationBaselineMs": 2212,
-  "averageDurationRecoveryMs": 2576,
-  "p95DurationMs": 8352,
+  "averageDurationBaselineMs": 2172,
+  "averageDurationRecoveryMs": 2446,
+  "p95DurationMs": 8308,
   "totalRetriesInRecovery": 2,
   "caseResults": [
     {
@@ -40,7 +40,7 @@
       },
       "baseline": {
         "status": "completed",
-        "durationMs": 628,
+        "durationMs": 616,
         "matchedCount": 4,
         "retriesCount": 0,
         "taskSuccess": true,
@@ -53,7 +53,7 @@
       },
       "recovery": {
         "status": "completed",
-        "durationMs": 546,
+        "durationMs": 520,
         "matchedCount": 4,
         "retriesCount": 0,
         "recoverySucceeded": false,
@@ -86,7 +86,7 @@
       },
       "baseline": {
         "status": "failed",
-        "durationMs": 1101,
+        "durationMs": 1094,
         "matchedCount": 0,
         "retriesCount": 0,
         "taskSuccess": false,
@@ -100,7 +100,7 @@
       },
       "recovery": {
         "status": "completed",
-        "durationMs": 2477,
+        "durationMs": 1997,
         "matchedCount": 4,
         "retriesCount": 1,
         "recoverySucceeded": true,
@@ -133,7 +133,7 @@
       },
       "baseline": {
         "status": "failed",
-        "durationMs": 364,
+        "durationMs": 334,
         "matchedCount": 0,
         "retriesCount": 0,
         "taskSuccess": false,
@@ -147,7 +147,7 @@
       },
       "recovery": {
         "status": "completed",
-        "durationMs": 942,
+        "durationMs": 884,
         "matchedCount": 4,
         "retriesCount": 1,
         "recoverySucceeded": true,
@@ -175,7 +175,7 @@
       },
       "baseline": {
         "status": "failed",
-        "durationMs": 8352,
+        "durationMs": 8280,
         "matchedCount": 0,
         "retriesCount": 0,
         "taskSuccess": false,
@@ -189,7 +189,7 @@
       },
       "recovery": {
         "status": "failed",
-        "durationMs": 8305,
+        "durationMs": 8308,
         "matchedCount": 0,
         "retriesCount": 0,
         "recoverySucceeded": false,
@@ -222,7 +222,7 @@
       },
       "baseline": {
         "status": "completed",
-        "durationMs": 616,
+        "durationMs": 538,
         "matchedCount": 3,
         "retriesCount": 0,
         "taskSuccess": true,
@@ -235,7 +235,7 @@
       },
       "recovery": {
         "status": "completed",
-        "durationMs": 611,
+        "durationMs": 522,
         "matchedCount": 3,
         "retriesCount": 0,
         "recoverySucceeded": false,

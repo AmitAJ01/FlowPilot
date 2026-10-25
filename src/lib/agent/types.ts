@@ -175,6 +175,7 @@ export interface BrowserRunnerOptions {
   prompt: string;
   targetUrl: string;
   referenceDate?: string;
+  executionEngine?: 'live' | 'simulated';
   taskSpec?: TaskSpecification;
   taskPlan?: TaskPlan;
   executionMode?: AgentExecutionMode;
@@ -191,6 +192,8 @@ export interface BrowserRunnerResult {
   targetUrl: string;
   resolvedUrl: string;
   referenceDate?: string;
+  executionEngine?: 'live' | 'simulated';
+  isSimulation?: boolean;
   executionMode: AgentExecutionMode;
   failureScenario: FailureScenario;
   status: 'completed' | 'failed';

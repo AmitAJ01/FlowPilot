@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { runBrowserWorkflow } from '@/lib/agent/browserRunner';
+import { runSimulatedWorkflow } from '@/lib/agent/simulationRunner';
 import { planTask } from '@/lib/agent/planner';
 import { validateWorkflowResult } from '@/lib/evaluation/groundTruthValidator';
 import { DEMO_PORTAL_REFERENCE_DATE } from '@/data/demoPortalData';
@@ -10,6 +11,7 @@ const RunWorkflowRequestSchema = z.object({
   prompt: z.string().min(3, 'Workflow prompt must contain at least 3 characters.'),
   targetUrl: z.string().optional().default('/demo/learning-portal'),
   referenceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  executionEngine: z.enum(['live', 'simulated']).optional().default('live'),
   executionMode: z.enum(['baseline', 'recovery']).optional().default('recovery'),
   failureScenario: z
     .enum(['none', 'delayed_element', 'transient_failure', 'missing_element', 'malformed_data'])
@@ -41,6 +43,7 @@ export async function POST(req: NextRequest) {
       prompt,
       targetUrl,
       referenceDate: reqRefDate,
+      executionEngine,
       executionMode,
       failureScenario,
       maxActions,
@@ -82,18 +85,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Step 2: Execute real Playwright browser automation with Bounded Recovery Policy
-    const executionResult = await runBrowserWorkflow({
+    // Step 2: Execute real Playwright browser automation OR deterministic simulation runner
+    const runnerOptions = {
       runId,
       prompt,
       targetUrl,
       referenceDate,
+      executionEngine,
       taskPlan,
       executionMode,
       failureScenario,
       maxActions,
       timeoutMs,
-    });
+    };
+
+    const executionResult =
+      executionEngine === 'simulated'
+        ? await runSimulatedWorkflow(runnerOptions)
+        : await runBrowserWorkflow(runnerOptions);
 
     // Step 3: Run independent ground-truth evaluation
     const evaluation = validateWorkflowResult(executionResult, { referenceDate });

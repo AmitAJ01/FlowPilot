@@ -88,8 +88,9 @@ function NewWorkflowContent() {
   const viewRunId = searchParams.get('viewRun');
 
   const [prompt, setPrompt] = useState(initialPrompt);
-  const [targetUrl, setTargetUrl] = useState('http://localhost:3000/demo/learning-portal');
+  const [targetUrl, setTargetUrl] = useState('/demo/learning-portal');
   const [executionEngine, setExecutionEngine] = useState<'live' | 'simulated'>('live');
+  const [isDeployedHost, setIsDeployedHost] = useState(false);
   
   // Advanced Evaluation & Failure Injection Controls
   const [agentPolicyMode, setAgentPolicyMode] = useState<AgentExecutionMode>('recovery');
@@ -113,6 +114,19 @@ function NewWorkflowContent() {
   const [totalScannedCount, setTotalScannedCount] = useState<number | null>(null);
   const [executionError, setExecutionError] = useState<string | null>(null);
   const [expandedStepIdx, setExpandedStepIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isDeployed =
+        window.location.hostname !== 'localhost' &&
+        window.location.hostname !== '127.0.0.1';
+      setIsDeployedHost(isDeployed);
+      // On deployed Vercel demo, default execution engine to Simulation Dry-Run
+      if (isDeployed && !viewRunId) {
+        setExecutionEngine('simulated');
+      }
+    }
+  }, [viewRunId]);
 
   useEffect(() => {
     if (searchParams.get('prompt')) {
@@ -154,8 +168,9 @@ function NewWorkflowContent() {
     }
   }, [searchParams, viewRunId]);
 
-  // Execute real Playwright browser automation via API route
-  const handleRunLiveWorkflow = async () => {
+  // Execute workflow via server API route (supporting both Live Playwright and Simulation modes)
+  const handleExecuteWorkflow = async (overrideEngine?: 'live' | 'simulated') => {
+    const engineToUse = overrideEngine || executionEngine;
     setIsRunning(true);
     setExecutionError(null);
     setExecutionSteps([]);
@@ -175,12 +190,15 @@ function NewWorkflowContent() {
     setExecutionSteps([
       {
         stepNumber: 1,
-        title: 'Dispatching Server Workflow Request',
+        title:
+          engineToUse === 'simulated'
+            ? 'Dispatching Simulation Workflow Request'
+            : 'Dispatching Server Workflow Request',
         actionType: 'navigate',
         status: 'active',
         timestamp: new Date().toISOString().slice(11, 19),
         durationMs: 0,
-        description: `Calling /api/workflows/run (Mode: ${agentPolicyMode}, Scenario: ${selectedScenario})...`,
+        description: `Calling /api/workflows/run (Engine: ${engineToUse === 'simulated' ? 'Simulation / Deterministic Fixture' : 'Live Playwright'}, Mode: ${agentPolicyMode}, Scenario: ${selectedScenario})...`,
       },
     ]);
 
@@ -191,6 +209,7 @@ function NewWorkflowContent() {
         body: JSON.stringify({
           prompt: prompt.trim(),
           targetUrl: targetUrl.trim(),
+          executionEngine: engineToUse,
           executionMode: agentPolicyMode,
           failureScenario: selectedScenario,
         }),
@@ -247,6 +266,7 @@ function NewWorkflowContent() {
               status: 'completed',
               taskType: data.taskPlan?.taskType,
               plannerSource: data.plannerSource,
+              executionEngine: engineToUse,
               executionMode: agentPolicyMode,
               failureScenario: selectedScenario,
             })
@@ -257,7 +277,7 @@ function NewWorkflowContent() {
       }
     } catch (err: any) {
       setExecutionError(
-        err.message || 'Failed to connect to the FlowPilot server-side browser runner.'
+        err.message || 'Failed to connect to the FlowPilot server-side runner.'
       );
       setExecutionSteps((prev) =>
         prev.map((s) => ({
@@ -269,150 +289,6 @@ function NewWorkflowContent() {
     } finally {
       setIsRunning(false);
     }
-  };
-
-  // Deterministic dry-run simulation
-  const handleStartSimulatedRun = () => {
-    setIsRunning(true);
-    setExecutionError(null);
-    setExecutionSteps([]);
-    setExtractedChecklist([]);
-    setCourseSummaries([]);
-    setOverdueItems([]);
-    setEvaluationResult(null);
-    setRecoveryEvents([]);
-    setMalformedWarnings([]);
-    setDetectedTaskType('assignment_checklist');
-    setPlannerSource('deterministic_fallback');
-
-    const stepsTemplate: AgentExecutionStep[] = [
-      {
-        stepNumber: 1,
-        title: 'Browser Initialization & Sandbox Navigation',
-        actionType: 'navigate',
-        status: 'active',
-        timestamp: '00:00.410',
-        durationMs: 410,
-        description: `Navigate to ${targetUrl}, await network idle, and parse root document metadata.`,
-        evidence: 'HTTP 200 OK — Rendered Student Learning Portal (12 assignments detected).'
-      },
-      {
-        stepNumber: 2,
-        title: 'Extract Assignment Elements & Attributes',
-        actionType: 'extract',
-        status: 'active',
-        timestamp: '00:01.820',
-        durationMs: 1410,
-        description: 'Locate assignment nodes with [data-testid="assignment-card"], extracting titles, course IDs, deadlines, and status badges.',
-        evidence: 'Extracted 12 structured records into memory representation.'
-      },
-      {
-        stepNumber: 3,
-        title: 'Apply Temporal & Incomplete Filter Predicates',
-        actionType: 'filter',
-        status: 'active',
-        timestamp: '00:02.940',
-        durationMs: 1120,
-        description: 'Apply predicate: status != "completed" AND dueDate between 2026-10-25 and 2026-11-01 (next 7 days). Exclude overdue items.',
-        evidence: '4 records matched criteria. 8 records rejected (2 overdue, 2 already completed, 4 due after 7 days).'
-      },
-      {
-        stepNumber: 4,
-        title: 'Synthesize Prioritized Checklist',
-        actionType: 'synthesize',
-        status: 'active',
-        timestamp: '00:03.950',
-        durationMs: 1010,
-        description: 'Order matching assignments by deadline urgency and syllabus grade weight percentage.',
-        evidence: 'Urgency scores computed: Raft Lab (98), Attention PS (90), Arch Doc (78), Quiz (75).'
-      },
-      {
-        stepNumber: 5,
-        title: 'Deterministic Ground-Truth Assertion',
-        actionType: 'assert',
-        status: 'active',
-        timestamp: '00:04.280',
-        durationMs: 330,
-        description: 'Assert extracted IDs match deterministic expected set: [CS301-A3, CS410-PS4, SE250-D2, MATH220-Q4].',
-        evidence: 'Verification Checksum Passed: 4/4 exact match against benchmark ground truth.'
-      }
-    ];
-
-    setExecutionSteps(stepsTemplate);
-
-    let step = 0;
-    const interval = setInterval(() => {
-      step += 1;
-      if (step < stepsTemplate.length) {
-        setExecutionSteps((prev) =>
-          prev.map((s, idx) => {
-            if (idx < step) return { ...s, status: 'completed' };
-            if (idx === step) return { ...s, status: 'active' };
-            return { ...s, status: 'active' };
-          })
-        );
-      } else {
-        clearInterval(interval);
-        setExecutionSteps((prev) => prev.map((s) => ({ ...s, status: 'completed' })));
-        setExtractedChecklist([
-          {
-            rank: 1,
-            id: 'CS301-A3',
-            title: 'Distributed Consensus Lab 3 (Raft Protocol Implementation)',
-            courseCode: 'CS 301',
-            dueDate: '2026-10-28',
-            daysUntilDue: 3,
-            status: 'In Progress',
-            weight: 20,
-            points: 100,
-            priorityLabel: 'High',
-            reasoning: 'Due in 3d (2026-10-28), Grade Weight: 20%, Status: in_progress',
-          },
-          {
-            rank: 2,
-            id: 'CS410-PS4',
-            title: 'Transformer Attention Mechanism & KV-Cache Problem Set',
-            courseCode: 'CS 410',
-            dueDate: '2026-10-30',
-            daysUntilDue: 5,
-            status: 'Not Started',
-            weight: 15,
-            points: 75,
-            priorityLabel: 'High',
-            reasoning: 'Due in 5d (2026-10-30), Grade Weight: 15%, Status: not_started',
-          },
-          {
-            rank: 3,
-            id: 'SE250-D2',
-            title: 'Architecture Design Document & Event-Driven Schema Review',
-            courseCode: 'SE 250',
-            dueDate: '2026-10-31',
-            daysUntilDue: 6,
-            status: 'In Progress',
-            weight: 10,
-            points: 50,
-            priorityLabel: 'Medium',
-            reasoning: 'Due in 6d (2026-10-31), Grade Weight: 10%, Status: in_progress',
-          },
-          {
-            rank: 4,
-            id: 'MATH220-Q4',
-            title: 'Eigenvalues & Spectral Theorem Timed Online Quiz',
-            courseCode: 'MATH 220',
-            dueDate: '2026-11-01',
-            daysUntilDue: 7,
-            status: 'Not Started',
-            weight: 10,
-            points: 40,
-            priorityLabel: 'Medium',
-            reasoning: 'Due in 7d (2026-11-01), Grade Weight: 10%, Status: not_started',
-          },
-        ]);
-        setExecutionDurationMs(4280);
-        setTotalScannedCount(12);
-        setIsRunning(false);
-      }
-    }, 700);
   };
 
   const handleReset = () => {
@@ -503,7 +379,7 @@ function NewWorkflowContent() {
                 type="button"
                 onClick={() => {
                   setPrompt(wf.prompt);
-                  setTargetUrl('http://localhost:3000/demo/learning-portal');
+                  setTargetUrl('/demo/learning-portal');
                 }}
                 className={`p-3 rounded-xl border text-left transition-all ${
                   isSelected
@@ -565,7 +441,7 @@ function NewWorkflowContent() {
                   </label>
                   <button
                     type="button"
-                    onClick={() => setTargetUrl('http://localhost:3000/demo/learning-portal')}
+                    onClick={() => setTargetUrl('/demo/learning-portal')}
                     className="text-[11px] text-cyan-400 hover:text-cyan-300 underline font-mono"
                   >
                     Reset to Demo Portal
@@ -579,6 +455,7 @@ function NewWorkflowContent() {
                     type="text"
                     value={targetUrl}
                     onChange={(e) => setTargetUrl(e.target.value)}
+                    placeholder="/demo/learning-portal"
                     className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg pl-9 pr-20 py-2 text-xs font-mono text-zinc-200 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50"
                   />
                   <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
@@ -597,46 +474,88 @@ function NewWorkflowContent() {
 
               {/* Execution Engine Selector */}
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                  Execution Engine
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setExecutionEngine('live')}
-                    className={`p-2.5 rounded-lg border text-left text-xs transition-all ${
-                      executionEngine === 'live'
-                        ? 'border-cyan-500/80 bg-cyan-950/30 text-cyan-300'
-                        : 'border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:text-zinc-300'
-                    }`}
-                  >
-                    <div className="font-semibold flex items-center gap-1.5">
-                      <Cpu className="h-3.5 w-3.5 text-cyan-400" />
-                      <span>Live Playwright Runner</span>
-                    </div>
-                    <div className="text-[10px] text-zinc-400 mt-0.5">
-                      Real Chromium + Tool Registry
-                    </div>
-                  </button>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-medium text-zinc-300">
+                    Execution Engine
+                  </label>
+                  {isDeployedHost && (
+                    <span className="text-[10px] font-mono text-indigo-400">
+                      Vercel Serverless Detected
+                    </span>
+                  )}
+                </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setExecutionEngine('simulated')}
                     className={`p-2.5 rounded-lg border text-left text-xs transition-all ${
                       executionEngine === 'simulated'
-                        ? 'border-indigo-500/80 bg-indigo-950/30 text-indigo-300'
+                        ? 'border-indigo-500/90 bg-indigo-950/40 text-indigo-200 ring-1 ring-indigo-500/40'
                         : 'border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:text-zinc-300'
                     }`}
                   >
-                    <div className="font-semibold flex items-center gap-1.5">
-                      <Layers className="h-3.5 w-3.5 text-indigo-400" />
-                      <span>Simulation Dry-Run</span>
+                    <div className="font-semibold flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Layers className="h-3.5 w-3.5 text-indigo-400" />
+                        <span>Simulation Dry-Run</span>
+                      </div>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-700/60 font-medium">
+                        Recommended
+                      </span>
                     </div>
-                    <div className="text-[10px] text-zinc-400 mt-0.5">
-                      Deterministic UI simulation
+                    <div className="text-[10px] text-zinc-400 mt-1">
+                      Deterministic fixture runner
+                    </div>
+                    <div className="text-[9px] text-zinc-500 mt-0.5 leading-tight">
+                      Full planning, tool registry & ground-truth verification
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setExecutionEngine('live')}
+                    className={`p-2.5 rounded-lg border text-left text-xs transition-all ${
+                      executionEngine === 'live'
+                        ? 'border-cyan-500/80 bg-cyan-950/30 text-cyan-300 ring-1 ring-cyan-500/40'
+                        : 'border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:text-zinc-300'
+                    }`}
+                  >
+                    <div className="font-semibold flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Cpu className="h-3.5 w-3.5 text-cyan-400" />
+                        <span>Live Playwright Runner</span>
+                      </div>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 font-medium">
+                        Worker Req
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-zinc-400 mt-1">
+                      Real Chromium automation
+                    </div>
+                    <div className="text-[9px] text-zinc-500 mt-0.5 leading-tight">
+                      Local Node dev or remote worker container
                     </div>
                   </button>
                 </div>
+
+                {isDeployedHost && executionEngine === 'live' && (
+                  <div className="mt-2.5 p-2.5 rounded-lg border border-amber-800/60 bg-amber-950/20 text-amber-300 text-[11px] leading-relaxed flex items-start gap-2">
+                    <Info className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+                    <div>
+                      <span className="font-semibold text-amber-200">Serverless Notice: </span>
+                      Live browser automation on Vercel requires an external worker container (<code className="text-zinc-300 font-mono">FLOWPILOT_WORKER_URL</code>). For an instant end-to-end demo, switch to{' '}
+                      <button
+                        type="button"
+                        onClick={() => setExecutionEngine('simulated')}
+                        className="underline font-semibold text-indigo-300 hover:text-indigo-200"
+                      >
+                        Simulation Dry-Run
+                      </button>
+                      .
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Advanced Evaluation & Failure Injection Controls */}
@@ -721,7 +640,7 @@ function NewWorkflowContent() {
               {/* Action Buttons */}
               <div className="pt-2 flex items-center gap-3">
                 <Button
-                  onClick={executionEngine === 'live' ? handleRunLiveWorkflow : handleStartSimulatedRun}
+                  onClick={() => handleExecuteWorkflow()}
                   isLoading={isRunning}
                   disabled={!prompt.trim()}
                   className="flex-1"
@@ -730,10 +649,12 @@ function NewWorkflowContent() {
                   <Play className="h-4 w-4 fill-current" />
                   <span>
                     {isRunning
-                      ? 'Executing Browser Workflow...'
-                      : executionEngine === 'live'
-                      ? 'Run Workflow (Live Browser)'
-                      : 'Run Workflow (Simulation)'}
+                      ? executionEngine === 'simulated'
+                        ? 'Executing Simulation Workflow...'
+                        : 'Executing Browser Workflow...'
+                      : executionEngine === 'simulated'
+                      ? 'Run Workflow (Simulation)'
+                      : 'Run Workflow (Live Browser)'}
                   </span>
                 </Button>
 
@@ -761,6 +682,21 @@ function NewWorkflowContent() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <CardTitle>Execution Trajectory Panel</CardTitle>
                     {detectedTaskType && getTaskTypeBadge(detectedTaskType)}
+                    {executionEngine === 'simulated' ? (
+                      <Badge variant="info" className="font-mono text-[10px]">
+                        <span className="flex items-center gap-1 text-indigo-300">
+                          <Layers className="h-3 w-3" />
+                          <span>Simulation Fixture</span>
+                        </span>
+                      </Badge>
+                    ) : (
+                      <Badge variant="neutral" className="font-mono text-[10px]">
+                        <span className="flex items-center gap-1 text-cyan-400">
+                          <Cpu className="h-3 w-3" />
+                          <span>Live Browser</span>
+                        </span>
+                      </Badge>
+                    )}
                     {plannerSource && (
                       <Badge
                         variant={plannerSource === 'gemini_model' ? 'info' : 'neutral'}
@@ -782,7 +718,11 @@ function NewWorkflowContent() {
                     {isRunning && (
                       <Badge variant="warning">
                         <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
-                        <span>Browser Automation Active...</span>
+                        <span>
+                          {executionEngine === 'simulated'
+                            ? 'Simulation Active...'
+                            : 'Browser Automation Active...'}
+                        </span>
                       </Badge>
                     )}
                     {!isRunning && (extractedChecklist.length > 0 || courseSummaries.length > 0 || overdueItems.length > 0) && (
@@ -812,7 +752,7 @@ function NewWorkflowContent() {
             <CardContent className="p-5 flex-1 flex flex-col justify-between">
               {/* Error Message Notice */}
               {executionError && (
-                <div className="mb-4 p-4 rounded-xl border border-rose-800/60 bg-rose-950/30 text-rose-300 text-xs space-y-1">
+                <div className="mb-4 p-4 rounded-xl border border-rose-800/60 bg-rose-950/30 text-rose-300 text-xs space-y-2">
                   <div className="flex items-center gap-2 font-semibold">
                     <AlertCircle className="h-4 w-4 text-rose-400" />
                     <span>Workflow Execution Halted</span>
@@ -820,6 +760,38 @@ function NewWorkflowContent() {
                   <p className="text-zinc-300 font-mono pl-6 leading-relaxed">
                     {executionError}
                   </p>
+                  {executionEngine === 'live' && (
+                    <div className="pl-6 pt-1">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        type="button"
+                        onClick={() => {
+                          setExecutionEngine('simulated');
+                          setTimeout(() => handleExecuteWorkflow('simulated'), 80);
+                        }}
+                        className="text-xs border-indigo-700/60 bg-indigo-950/60 text-indigo-200 hover:bg-indigo-900/60"
+                      >
+                        <Layers className="h-3.5 w-3.5 mr-1.5 text-indigo-400" />
+                        <span>Switch to Simulation Dry-Run & Run Workflow</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Simulation Mode Explanatory Banner */}
+              {executionEngine === 'simulated' && !isRunning && (extractedChecklist.length > 0 || courseSummaries.length > 0 || overdueItems.length > 0) && (
+                <div className="mb-4 p-3.5 rounded-xl border border-indigo-900/60 bg-indigo-950/30 text-indigo-200 text-xs flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <Layers className="h-4 w-4 shrink-0 text-indigo-400" />
+                    <span className="leading-relaxed">
+                      <strong>Execution Mode: Simulation / Deterministic Fixture Data.</strong> Executed task planning, typed tool registry validation, data extraction, and ground-truth evaluation in-memory against Apex University testbed fixture without spawning browser binaries.
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-indigo-300 bg-indigo-900/50 px-2 py-0.5 rounded border border-indigo-700/70 shrink-0">
+                    Zero Browser Binaries
+                  </span>
                 </div>
               )}
 
@@ -945,11 +917,15 @@ function NewWorkflowContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleRunLiveWorkflow}
+                    onClick={() => handleExecuteWorkflow()}
                     className="text-xs"
                   >
                     <Play className="h-3.5 w-3.5 text-cyan-400" />
-                    <span>Run Live Playwright Workflow</span>
+                    <span>
+                      {executionEngine === 'simulated'
+                        ? 'Run Simulation Workflow'
+                        : 'Run Live Playwright Workflow'}
+                    </span>
                   </Button>
                 </div>
               )}

@@ -5,7 +5,7 @@ export const SIMULATED_WORKFLOW_RUN: WorkflowRun = {
   id: 'run-sim-001',
   taskTitle: 'Checklist: Incomplete assignments due within 7 days',
   prompt: EXPECTED_GROUND_TRUTH.taskPrompt,
-  targetUrl: 'http://localhost:3000/demo/learning-portal',
+  targetUrl: '/demo/learning-portal',
   status: 'simulated',
   durationMs: 4280,
   createdAt: '2026-10-25T17:45:00.000Z',

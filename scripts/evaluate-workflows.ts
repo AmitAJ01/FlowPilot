@@ -2,6 +2,7 @@ import http from 'http';
 import { spawn, ChildProcess } from 'child_process';
 import { planTask } from '../src/lib/agent/planner';
 import { runBrowserWorkflow } from '../src/lib/agent/browserRunner';
+import { runSimulatedWorkflow } from '../src/lib/agent/simulationRunner';
 import { validateWorkflowResult } from '../src/lib/evaluation/groundTruthValidator';
 import { validateToolInvocation, validateToolPlan } from '../src/lib/agent/toolRegistry';
 import {
@@ -412,12 +413,136 @@ async function main() {
   }
 
   // =========================================================================
+  // TEST 9: Simulation Workflow A (7-Day Prioritized Checklist)
+  // =========================================================================
+  console.log(`\n${colors.bold}[Test 9/12] Simulation Workflow A: In-Memory Prioritized Checklist${colors.reset}`);
+  try {
+    const simResultA = await runSimulatedWorkflow({
+      runId: `sim-eval-a-${Date.now()}`,
+      prompt: WORKFLOW_A_GROUND_TRUTH.taskPrompt,
+      targetUrl: '/demo/learning-portal',
+      referenceDate,
+    });
+
+    const simEvalA = validateWorkflowResult(simResultA, { referenceDate });
+
+    if (
+      simResultA.status === 'completed' &&
+      simResultA.isSimulation &&
+      simResultA.checklist.length === 4 &&
+      simEvalA.isValid &&
+      simEvalA.metrics?.f1Score === 1.0
+    ) {
+      console.log(`  ${colors.green}✓ PASS:${colors.reset} Simulation mode executed Workflow A with 100% ground-truth F1.`);
+      console.log(`  ${colors.green}✓ PASS:${colors.reset} Label verified: isSimulation=true, executionEngine=simulated.`);
+      totalTestsPassed++;
+    } else {
+      throw new Error(`Simulation Workflow A mismatch: ${JSON.stringify(simEvalA.failedChecks)}`);
+    }
+  } catch (err: any) {
+    console.log(`  ${colors.red}✗ FAIL:${colors.reset} Simulation Workflow A failed: ${err.message}`);
+    totalTestsFailed++;
+  }
+
+  // =========================================================================
+  // TEST 10: Simulation Workflow B (Course-by-Course Summary)
+  // =========================================================================
+  console.log(`\n${colors.bold}[Test 10/12] Simulation Workflow B: In-Memory Course Summary${colors.reset}`);
+  try {
+    const simResultB = await runSimulatedWorkflow({
+      runId: `sim-eval-b-${Date.now()}`,
+      prompt: WORKFLOW_B_GROUND_TRUTH.taskPrompt,
+      targetUrl: '/demo/learning-portal',
+      referenceDate,
+    });
+
+    const simEvalB = validateWorkflowResult(simResultB, { referenceDate });
+
+    if (
+      simResultB.status === 'completed' &&
+      simResultB.isSimulation &&
+      simResultB.courseSummaries?.length === 7 &&
+      simEvalB.isValid &&
+      simEvalB.metrics?.exactMatchAccuracy === 1.0
+    ) {
+      console.log(`  ${colors.green}✓ PASS:${colors.reset} Simulation mode executed Workflow B with 100% exact match across 7 courses.`);
+      totalTestsPassed++;
+    } else {
+      throw new Error(`Simulation Workflow B mismatch: ${JSON.stringify(simEvalB.failedChecks)}`);
+    }
+  } catch (err: any) {
+    console.log(`  ${colors.red}✗ FAIL:${colors.reset} Simulation Workflow B failed: ${err.message}`);
+    totalTestsFailed++;
+  }
+
+  // =========================================================================
+  // TEST 11: Simulation Workflow C (Overdue Incomplete Assignments)
+  // =========================================================================
+  console.log(`\n${colors.bold}[Test 11/12] Simulation Workflow C: In-Memory Overdue Audit${colors.reset}`);
+  try {
+    const simResultC = await runSimulatedWorkflow({
+      runId: `sim-eval-c-${Date.now()}`,
+      prompt: WORKFLOW_C_GROUND_TRUTH.taskPrompt,
+      targetUrl: '/demo/learning-portal',
+      referenceDate,
+    });
+
+    const simEvalC = validateWorkflowResult(simResultC, { referenceDate });
+
+    if (
+      simResultC.status === 'completed' &&
+      simResultC.isSimulation &&
+      simResultC.overdueItems?.length === 2 &&
+      simEvalC.isValid &&
+      simEvalC.metrics?.f1Score === 1.0
+    ) {
+      console.log(`  ${colors.green}✓ PASS:${colors.reset} Simulation mode executed Workflow C isolating 2 overdue items with 100% F1.`);
+      totalTestsPassed++;
+    } else {
+      throw new Error(`Simulation Workflow C mismatch: ${JSON.stringify(simEvalC.failedChecks)}`);
+    }
+  } catch (err: any) {
+    console.log(`  ${colors.red}✗ FAIL:${colors.reset} Simulation Workflow C failed: ${err.message}`);
+    totalTestsFailed++;
+  }
+
+  // =========================================================================
+  // TEST 12: Simulation Unsupported Task Boundary Guard
+  // =========================================================================
+  console.log(`\n${colors.bold}[Test 12/12] Simulation Unsupported Task Boundary Guard${colors.reset}`);
+  try {
+    const simResultUnsup = await runSimulatedWorkflow({
+      runId: `sim-eval-unsup-${Date.now()}`,
+      prompt: promptUnsupported,
+      targetUrl: '/demo/learning-portal',
+      referenceDate,
+    });
+
+    const simEvalUnsup = validateWorkflowResult(simResultUnsup, { referenceDate });
+
+    if (
+      simResultUnsup.status === 'failed' &&
+      simResultUnsup.isSimulation &&
+      simResultUnsup.taskType === 'unsupported' &&
+      simEvalUnsup.isValid
+    ) {
+      console.log(`  ${colors.green}✓ PASS:${colors.reset} Simulation mode safely rejected unsupported task upfront.`);
+      totalTestsPassed++;
+    } else {
+      throw new Error(`Simulation unsupported task check did not reject.`);
+    }
+  } catch (err: any) {
+    console.log(`  ${colors.red}✗ FAIL:${colors.reset} Simulation unsupported task check failed: ${err.message}`);
+    totalTestsFailed++;
+  }
+
+  // =========================================================================
   // Summary & Teardown
   // =========================================================================
   const elapsed = Date.now() - suiteStartTime;
   console.log(`\n${colors.bold}${colors.cyan}================================================================${colors.reset}`);
-  console.log(`${colors.bold}Multi-Workflow Suite Summary: ${totalTestsPassed}/8 Tests Passed (${elapsed}ms)${colors.reset}`);
-  console.log(`Verdict: ${totalTestsFailed === 0 ? colors.green + colors.bold + 'ALL 8 INTEGRITY TESTS PASSED' : colors.red + colors.bold + 'TEST FAILURES DETECTED'}${colors.reset}`);
+  console.log(`${colors.bold}Multi-Workflow Suite Summary: ${totalTestsPassed}/12 Tests Passed (${elapsed}ms)${colors.reset}`);
+  console.log(`Verdict: ${totalTestsFailed === 0 ? colors.green + colors.bold + 'ALL 12 INTEGRITY TESTS PASSED' : colors.red + colors.bold + 'TEST FAILURES DETECTED'}${colors.reset}`);
   console.log(`${colors.bold}${colors.cyan}================================================================${colors.reset}\n`);
 
   if (serverProcess) {
